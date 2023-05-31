@@ -77,7 +77,7 @@ class OpenBCIGanglion(object):
         self.board_type = "ganglion"
 
         print("Looking for Ganglion board")
-        if port == None:
+        if port is None:
             port = self.find_port()
         self.port = port  # find_port might not return string
 
@@ -106,26 +106,29 @@ class OpenBCIGanglion(object):
 
     def connect(self):
         """ Connect to the board and configure it. Note: recreates various objects upon call. """
-        print("Init BLE connection with MAC: " + self.port)
+        print(f"Init BLE connection with MAC: {self.port}")
         print("NB: if it fails, try with root privileges.")
         self.gang = Peripheral(self.port, 'random')  # ADDR_TYPE_RANDOM
 
         print("Get mainservice...")
         self.service = self.gang.getServiceByUUID(BLE_SERVICE)
-        print("Got:" + str(self.service))
+        print(f"Got:{str(self.service)}")
 
         print("Get characteristics...")
         self.char_read = self.service.getCharacteristics(BLE_CHAR_RECEIVE)[0]
-        print("receive, properties: " + str(self.char_read.propertiesToString()) +
-              ", supports read: " + str(self.char_read.supportsRead()))
+        print(
+            f"receive, properties: {str(self.char_read.propertiesToString())}, supports read: {str(self.char_read.supportsRead())}"
+        )
 
         self.char_write = self.service.getCharacteristics(BLE_CHAR_SEND)[0]
-        print("write, properties: " + str(self.char_write.propertiesToString()) +
-              ", supports read: " + str(self.char_write.supportsRead()))
+        print(
+            f"write, properties: {str(self.char_write.propertiesToString())}, supports read: {str(self.char_write.supportsRead())}"
+        )
 
         self.char_discon = self.service.getCharacteristics(BLE_CHAR_DISCONNECT)[0]
-        print("disconnect, properties: " + str(self.char_discon.propertiesToString()) +
-              ", supports read: " + str(self.char_discon.supportsRead()))
+        print(
+            f"disconnect, properties: {str(self.char_discon.propertiesToString())}, supports read: {str(self.char_discon.supportsRead())}"
+        )
 
         # set delegate to handle incoming data
         self.delegate = GanglionDelegate(self.scaling_output)
@@ -137,7 +140,7 @@ class OpenBCIGanglion(object):
             try:
                 self.ser_write(b'n')
             except Exception as e:
-                print("Something went wrong while enabling aux channels: " + str(e))
+                print(f"Something went wrong while enabling aux channels: {str(e)}")
 
         print("Turn on notifications")
         # nead up-to-date bluepy, cf https://github.com/IanHarvey/bluepy/issues/53
@@ -145,7 +148,7 @@ class OpenBCIGanglion(object):
         try:
             self.desc_notify.write(b"\x01")
         except Exception as e:
-            print("Something went wrong while trying to enable notification: " + str(e))
+            print(f"Something went wrong while trying to enable notification: {str(e)}")
 
         print("Connection established")
 
@@ -158,7 +161,9 @@ class OpenBCIGanglion(object):
             else:
                 self.ser_write(b'b')
         except Exception as e:
-            print("Something went wrong while asking the board to start streaming: " + str(e))
+            print(
+                f"Something went wrong while asking the board to start streaming: {str(e)}"
+            )
         self.streaming = True
         self.packets_dropped = 0
         self.time_last_packet = timeit.default_timer()
@@ -174,16 +179,18 @@ class OpenBCIGanglion(object):
         scan_time = 5
         print("Scanning for 5 seconds nearby devices...")
 
-        #   From bluepy example
+
+
         class ScanDelegate(DefaultDelegate):
             def __init__(self):
                 DefaultDelegate.__init__(self)
 
             def handleDiscovery(self, dev, isNewDev, isNewData):
                 if isNewDev:
-                    print("Discovered device: " + dev.addr)
+                    print(f"Discovered device: {dev.addr}")
                 elif isNewData:
-                    print("Received new data from: " + dev.addr)
+                    print(f"Received new data from: {dev.addr}")
+
 
         scanner = Scanner().withDelegate(ScanDelegate())
         devices = scanner.scan(scan_time)
@@ -193,7 +200,7 @@ class OpenBCIGanglion(object):
             print("No BLE devices found. Check connectivity.")
             return ""
         else:
-            print("Found " + str(nb_devices) + ", detecting Ganglion")
+            print(f"Found {nb_devices}, detecting Ganglion")
             list_mac = []
             list_id = []
 
@@ -204,8 +211,7 @@ class OpenBCIGanglion(object):
                     if desc == "Complete Local Name" and value.startswith("Ganglion"):
                         list_mac.append(dev.addr)
                         list_id.append(value)
-                        print("Got Ganglion: " + value +
-                              ", with MAC: " + dev.addr)
+                        print(f"Got Ganglion: {value}, with MAC: {dev.addr}")
                         break
         nb_ganglions = len(list_mac)
 
@@ -214,9 +220,9 @@ class OpenBCIGanglion(object):
             raise OSError('Cannot find OpenBCI Ganglion MAC address')
 
         if nb_ganglions > 1:
-            print("Found " + str(nb_ganglions) + ", selecting first")
+            print(f"Found {nb_ganglions}, selecting first")
 
-        print("Selecting MAC address " + list_mac[0] + " for " + list_id[0])
+        print(f"Selecting MAC address {list_mac[0]} for {list_id[0]}")
         return list_mac[0]
 
     def ser_write(self, b):
@@ -276,7 +282,7 @@ class OpenBCIGanglion(object):
                 # at most we will get one sample per packet
                 self.waitForNotifications(1. / self.getSampleRate())
             except Exception as e:
-                print("Something went wrong while waiting for a new sample: " + str(e))
+                print(f"Something went wrong while waiting for a new sample: {str(e)}")
             # retrieve current samples on the stack
             samples = self.delegate.getSamples()
             self.packets_dropped = self.delegate.getMaxPacketsDropped()
@@ -305,16 +311,15 @@ class OpenBCIGanglion(object):
             try:
                 self.char_write.write(b']')
             except Exception as e:
-                print("Something went wrong while setting signal: " + str(e))
+                print(f"Something went wrong while setting signal: {str(e)}")
         elif signal == 1:
             self.warn("Eisabling synthetic square wave")
             try:
                 self.char_write.write(b'[')
             except Exception as e:
-                print("Something went wrong while setting signal: " + str(e))
+                print(f"Something went wrong while setting signal: {str(e)}")
         else:
-            self.warn(
-                "%s is not a known test signal. Valid signal is 0-1" % signal)
+            self.warn(f"{signal} is not a known test signal. Valid signal is 0-1")
 
     def set_channel(self, channel, toggle_position):
         """ Enable / disable channels """
@@ -340,7 +345,7 @@ class OpenBCIGanglion(object):
                 if channel is 4:
                     self.ser.write(b'4')
         except Exception as e:
-            print("Something went wrong while setting channels: " + str(e))
+            print(f"Something went wrong while setting channels: {str(e)}")
 
     """
   
@@ -359,7 +364,9 @@ class OpenBCIGanglion(object):
             else:
                 self.ser_write(b's')
         except Exception as e:
-            print("Something went wrong while asking the board to stop streaming: " + str(e))
+            print(
+                f"Something went wrong while asking the board to stop streaming: {str(e)}"
+            )
         if self.log:
             logging.warning('sent <s>: stopped streaming')
 
@@ -370,12 +377,12 @@ class OpenBCIGanglion(object):
         try:
             self.char_discon.write(b' ')
         except Exception as e:
-            print("Something went wrong while asking the board to disconnect: " + str(e))
+            print(f"Something went wrong while asking the board to disconnect: {str(e)}")
         # should not try to read/write anything after that, will crash
         try:
             self.gang.disconnect()
         except Exception as e:
-            print("Something went wrong while shutting down BLE link: " + str(e))
+            print(f"Something went wrong while shutting down BLE link: {str(e)}")
         logging.warning('BLE closed')
 
     """
@@ -392,7 +399,7 @@ class OpenBCIGanglion(object):
                              str(self.log_packet_count))
                 self.log_packet_count = 0
             logging.warning(text)
-        print("Warning: %s" % text)
+        print(f"Warning: {text}")
 
     def check_connection(self):
         """ Check connection quality in term of lag and number of packets drop.
@@ -469,7 +476,7 @@ class GanglionDelegate(DefaultDelegate):
         # bluepy returns INT with python3 and STR with python2
         if type(packet) is str:
             # convert a list of strings in bytes
-            unpac = struct.unpack(str(len(packet)) + 'B', "".join(packet))
+            unpac = struct.unpack(f'{len(packet)}B', "".join(packet))
         else:
             unpac = packet
 
@@ -481,19 +488,15 @@ class GanglionDelegate(DefaultDelegate):
         if start_byte == 0:
             self.receiving_ASCII = False
             self.parseRaw(start_byte, unpac[1:])
-        # 18-bit compression with Accelerometer
         elif start_byte >= 1 and start_byte <= 100:
             self.receiving_ASCII = False
             self.parse18bit(start_byte, unpac[1:])
-        # 19-bit compression without Accelerometer
         elif start_byte >= 101 and start_byte <= 200:
             self.receiving_ASCII = False
             self.parse19bit(start_byte - 100, unpac[1:])
-        # Impedance Channel
         elif start_byte >= 201 and start_byte <= 205:
             self.receiving_ASCII = False
             self.parseImpedance(start_byte, packet[1:])
-        # Part of ASCII -- TODO: better formatting of incoming ASCII
         elif start_byte == 206:
             print("%\t" + str(packet[1:]))
             self.receiving_ASCII = True
@@ -505,19 +508,15 @@ class GanglionDelegate(DefaultDelegate):
             print("$$$")
             self.receiving_ASCII = False
         else:
-            print("Warning: unknown type of packet: " + str(start_byte))
+            print(f"Warning: unknown type of packet: {str(start_byte)}")
 
     def parseRaw(self, packet_id, packet):
         """ Dealing with "Raw uncompressed" """
         if len(packet) != 19:
-            print('Wrong size, for raw data' +
-                  str(len(packet)) + ' instead of 19 bytes')
+            print(f'Wrong size, for raw data{len(packet)} instead of 19 bytes')
             return
 
-        chan_data = []
-        # 4 channels of 24bits, take values one by one
-        for i in range(0, 12, 3):
-            chan_data.append(conv24bitsToInt(packet[i:i + 3]))
+        chan_data = [conv24bitsToInt(packet[i:i + 3]) for i in range(0, 12, 3)]
         # save uncompressed raw channel for future use and append whole sample
         self.pushSample(packet_id, chan_data,
                         self.lastAcceleromoter, self.lastImpedance)
@@ -533,9 +532,7 @@ class GanglionDelegate(DefaultDelegate):
 
         # should get 2 by 4 arrays of uncompressed data
         deltas = decompressDeltas19Bit(packet)
-        # the sample_id will be shifted
-        delta_id = 1
-        for delta in deltas:
+        for delta_id, delta in enumerate(deltas, start=1):
             # convert from packet to sample id
             sample_id = (packet_id - 1) * 2 + delta_id
             # 19bit packets hold deltas between two samples
@@ -545,7 +542,6 @@ class GanglionDelegate(DefaultDelegate):
             self.pushSample(sample_id, full_data,
                             self.lastAcceleromoter, self.lastImpedance)
             self.lastChannelData = full_data
-            delta_id += 1
         self.updatePacketsCount(packet_id)
 
     def parse18bit(self, packet_id, packet):
@@ -567,9 +563,7 @@ class GanglionDelegate(DefaultDelegate):
 
         # deltas: should get 2 by 4 arrays of uncompressed data
         deltas = decompressDeltas18Bit(packet[:-1])
-        # the sample_id will be shifted
-        delta_id = 1
-        for delta in deltas:
+        for delta_id, delta in enumerate(deltas, start=1):
             # convert from packet to sample id
             sample_id = (packet_id - 1) * 2 + delta_id
             # 19bit packets hold deltas between two samples
@@ -578,7 +572,6 @@ class GanglionDelegate(DefaultDelegate):
             self.pushSample(sample_id, full_data,
                             self.lastAcceleromoter, self.lastImpedance)
             self.lastChannelData = full_data
-            delta_id += 1
         self.updatePacketsCount(packet_id)
 
     def parseImpedance(self, packet_id, packet):
@@ -616,7 +609,7 @@ class GanglionDelegate(DefaultDelegate):
             self.packets_dropped = packet_id + 101 - self.last_id - 1
         self.last_id = packet_id
         if self.packets_dropped > 0:
-            print("Warning: dropped " + str(self.packets_dropped) + " packets.")
+            print(f"Warning: dropped {str(self.packets_dropped)} packets.")
 
     def getSamples(self):
         """ Retrieve and remove from buffer last samples. """
@@ -652,10 +645,7 @@ def conv24bitsToInt(unpacked):
 
     literal_read = pre_fix + literal_read
 
-    # unpack little endian(>) signed integer(i) (makes unpacking platform independent)
-    myInt = struct.unpack('>i', literal_read)[0]
-
-    return myInt
+    return struct.unpack('>i', literal_read)[0]
 
 
 def conv19bitToInt32(threeByteBuffer):
@@ -665,14 +655,12 @@ def conv19bitToInt32(threeByteBuffer):
 
     prefix = 0
 
-    # if LSB is 1, negative number, some hasty unsigned to signed conversion to do
-    if threeByteBuffer[2] & 0x01 > 0:
-        prefix = 0b1111111111111
-        return ((prefix << 19) | (threeByteBuffer[0] << 16) |
-                (threeByteBuffer[1] << 8) | threeByteBuffer[2]) | ~0xFFFFFFFF
-    else:
+    if threeByteBuffer[2] & 0x01 <= 0:
         return (prefix << 19) | (threeByteBuffer[0] << 16) |\
                (threeByteBuffer[1] << 8) | threeByteBuffer[2]
+    prefix = 0b1111111111111
+    return ((prefix << 19) | (threeByteBuffer[0] << 16) |
+            (threeByteBuffer[1] << 8) | threeByteBuffer[2]) | ~0xFFFFFFFF
 
 
 def conv18bitToInt32(threeByteBuffer):
@@ -682,23 +670,18 @@ def conv18bitToInt32(threeByteBuffer):
 
     prefix = 0
 
-    # if LSB is 1, negative number, some hasty unsigned to signed conversion to do
-    if threeByteBuffer[2] & 0x01 > 0:
-        prefix = 0b11111111111111
-        return ((prefix << 18) | (threeByteBuffer[0] << 16) |
-                (threeByteBuffer[1] << 8) | threeByteBuffer[2]) | ~0xFFFFFFFF
-    else:
+    if threeByteBuffer[2] & 0x01 <= 0:
         return (prefix << 18) | (threeByteBuffer[0] << 16) |\
                (threeByteBuffer[1] << 8) | threeByteBuffer[2]
+    prefix = 0b11111111111111
+    return ((prefix << 18) | (threeByteBuffer[0] << 16) |
+            (threeByteBuffer[1] << 8) | threeByteBuffer[2]) | ~0xFFFFFFFF
 
 
 def conv8bitToInt8(byte):
     """ Convert one byte to signed value """
 
-    if byte > 127:
-        return (256 - byte) * (-1)
-    else:
-        return byte
+    return (256 - byte) * (-1) if byte > 127 else byte
 
 
 def decompressDeltas19Bit(buffer):

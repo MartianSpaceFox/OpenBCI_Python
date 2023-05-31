@@ -80,11 +80,7 @@ def streamData(sample):
     # TODO: duplicate packet if skipped to stay sync
     if sample.id != last_id + 1:
         print("time", tick, ": paquet skipped!")
-    if sample.id == 255:
-        last_id = -1
-    else:
-        last_id = sample.id
-
+    last_id = -1 if sample.id == 255 else sample.id
     # update counters
     global nb_samples_in, nb_samples_out
     nb_samples_in = nb_samples_in + 1

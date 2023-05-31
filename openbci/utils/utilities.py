@@ -16,8 +16,7 @@ def make_tail_byte_from_packet_type(packet_type):
 
 def sample_number_normalize(sample_number=None):
     if sample_number is not None:
-        if sample_number > Constants.SAMPLE_NUMBER_MAX_CYTON:
-            sample_number = Constants.SAMPLE_NUMBER_MAX_CYTON
+        sample_number = min(sample_number, Constants.SAMPLE_NUMBER_MAX_CYTON)
     else:
         sample_number = 0x45
 
